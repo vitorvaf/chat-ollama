@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat com Ollama</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #chat-container { width: 50%; margin: auto; padding: 10px; border: 1px solid #ccc; }
+        #messages { height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; }
+        .message { padding: 5px; }
+        .user { font-weight: bold; }
+        .bot { color: blue; }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <h2>Chat com Ollama</h2>
+        <div id="messages"></div>
+        <input type="text" id="prompt" placeholder="Digite sua mensagem...">
+        <button onclick="sendMessage()">Enviar</button>
+    </div>
+
+    <script>
+        function appendMessage(content, className) {
+            const messageContainer = document.createElement('div');
+            messageContainer.className = 'message ' + className;
+            messageContainer.innerText = content;
+            document.getElementById('messages').appendChild(messageContainer);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+
+        async function sendMessage() {
+            const prompt = document.getElementById('prompt').value;
+            if (!prompt) return;
+
+            appendMessage('Você: ' + prompt, 'user');
+
+            document.getElementById('prompt').value = '';
+
+            const botMessageContainer = document.createElement('div');
+            botMessageContainer.className = 'message bot';
+            document.getElementById('messages').appendChild(botMessageContainer);
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let botMessage = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        botMessageContainer.innerText = 'Ollama: ' + botMessage;
+                        break;
+                    }
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    botMessage += chunk;
+                    botMessageContainer.innerText = 'Ollama: ' + botMessage;
+                }
+            } catch (error) {
+                console.error('Erro ao enviar mensagem:', error);
+            }
+        }
+    </script>
+</body>
+</html>
